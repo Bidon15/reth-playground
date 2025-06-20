@@ -1,20 +1,34 @@
-# Tiltfile - Composable Rollup Development
+# Tiltfile - Rollup Development Environment
 
 # Allow Tilt to run with the current k8s context (safety check)
 allow_k8s_contexts('admin@k8s-tools-internal')
 
 # Configuration flags
-config.define_bool('reth-only', args=False, usage='Run only Reth (disable Celestia)')
+config.define_bool('reth-only', args=False, usage='Run only Reth (disable full rollup stack)')
 
 cfg = config.parse()
 
-# Create shared network for all services
+# Create shared network and JWT secret for all services
 local('docker network create rollup-network || true')
+
+# Generate JWT secret for Reth (before it starts)
+local_resource('generate-jwt-secret',
+    '''
+    echo "🔐 Generating JWT secret for Reth..."
+    docker run --rm -v jwt-tokens:/shared alpine:latest sh -c "
+    apk add --no-cache openssl &&
+    openssl rand -hex 32 > /shared/reth-jwt-secret.txt &&
+    echo 'JWT secret generated'
+    "
+    ''',
+    labels=['init']
+)
 
 # Build Reth using existing Makefile
 local_resource('build-reth',
     'make build',
     deps=['./crates', './bin', './Cargo.toml', './Cargo.lock'],
+    resource_deps=['generate-jwt-secret'],
     labels=['build']
 )
 
@@ -22,20 +36,19 @@ local_resource('build-reth',
 docker_compose('./docker-compose.reth.yml')
 dc_resource('reth-node', labels=['reth'])
 
-# Celestia is enabled by default (unless --reth-only is specified)
+# Full rollup stack is enabled by default (unless --reth-only is specified)
 if not cfg.get('reth-only'):
-    print("🌟 Starting Celestia DA node with auto-funding and JWT token setup...")
+    print("🚀 Starting Full Rollup Stack (Reth + Celestia + Rollkit)...")
     
-    # Start Celestia with auto-setup
+    # Start Celestia DA node
     docker_compose('./celestia-compose.yml')
     dc_resource('celestia-node', labels=['celestia'])
     
-    # Wait for Celestia to start, then fund and get JWT token
+    # Fund Celestia and get its JWT token
     local_resource('celestia-fund',
         '''
         echo "🔑 Waiting for Celestia node to start..."
         
-        # Wait for container to be ready
         timeout 60 bash -c '
         until docker exec celestia echo "Container ready" > /dev/null 2>&1; do
             echo "Waiting for container..."
@@ -49,16 +62,14 @@ if not cfg.get('reth-only'):
         labels=['celestia']
     )
     
-    # Check that everything is working
+    # Initialize rollup with all dependencies
     local_resource('celestia-ready',
         '''
-        # Get the JWT token
         jwt_token=$(docker exec celestia cat /shared/jwt/celestia-jwt.token)
         
-        echo "✅ JWT Token obtained!"
+        echo "✅ Celestia JWT Token obtained!"
         echo "🔍 Testing Celestia RPC with JWT token..."
         
-        # Test if Celestia is ready using the JWT token
         curl -s -X POST http://localhost:26658 \\
             -H "Authorization: Bearer $jwt_token" \\
             -H "Content-Type: application/json" \\
@@ -66,15 +77,41 @@ if not cfg.get('reth-only'):
             | jq .
         
         echo ""
-        echo "🎉 Celestia is ready for Rollkit!"
-        echo "🔑 JWT Token: $jwt_token"
-        echo ""
-        echo "🔗 Network connectivity:"
-        echo "  Rollkit → Celestia: http://celestia-node:26658"
-        echo "  Rollkit → Reth: http://reth-node:8545"
+        echo "🎉 Celestia is ready for rollup!"
+        echo "🔑 Celestia JWT: $jwt_token"
         ''',
         resource_deps=['celestia-fund'],
         labels=['celestia']
+    )
+    
+    # Start Rollkit sequencer
+    docker_compose('./rollkit-compose.yml')
+    dc_resource('rollup-init', labels=['rollkit'])
+    dc_resource('rollkit-sequencer', labels=['rollkit'])
+    
+    # Final rollup stack validation
+    local_resource('rollup-ready',
+        '''
+        echo "🔄 Waiting for complete rollup stack..."
+        
+        timeout 120 bash -c '
+        until curl -s http://localhost:26657/status | grep -q "result"; do
+            echo "Waiting for Rollkit RPC..."
+            sleep 5
+        done'
+        
+        echo ""
+        echo "🎉 COMPLETE ROLLUP STACK IS READY!"
+        echo "========================================="
+        echo "🔧 Reth (Execution): http://localhost:8545"
+        echo "🌟 Celestia (DA): http://localhost:26658"  
+        echo "🔄 Rollkit (Sequencer): http://localhost:26657"
+        echo ""
+        echo "🧪 Test the rollup:"
+        echo "curl -s http://localhost:26657/status | jq ."
+        ''',
+        resource_deps=['rollkit-sequencer'],
+        labels=['rollkit']
     )
 
 # Manual health check from host
@@ -93,13 +130,17 @@ local_resource('reth-health',
 # Print usage info
 print("")
 if not cfg.get('reth-only'):
-    print("🌟 Celestia DA: http://localhost:26658")
-    print("🔑 JWT Token: Check celestia-ready logs")
+    print("🚀 FULL ROLLUP STACK ENABLED")
+    print("🔧 Reth: http://localhost:8545")
+    print("🌟 Celestia: http://localhost:26658")
+    print("🔄 Rollkit: http://localhost:26657")
+else:
+    print("🔧 RETH-ONLY MODE")
+    print("🔗 Reth RPC: http://localhost:8545")
 
-print("🔗 Reth RPC: http://localhost:8545")
 print("📊 Tilt Dashboard: http://localhost:10350")
 print("🌐 Shared Network: rollup-network")
 print("")
 print("💡 Usage:")
-print("  tilt up             # Reth + Celestia DA on shared network")
-print("  tilt up --reth-only # Just Reth on shared network")
+print("  tilt up           # Full rollup stack (DEFAULT)")
+print("  tilt up --reth-only # Just Reth for development")

@@ -1,0 +1,168 @@
+# Makefile.bootcamp - Bootcamp-specific targets
+# This file gets included by the main Makefile
+
+.PHONY: bootcamp-help bootcamp-start bootcamp-stop bootcamp-logs bootcamp-status bootcamp-tips bootcamp-install
+
+# Bootcamp help (separate from main help)
+bootcamp-help:
+	@echo "🚀 Reth Bootcamp Commands"
+	@echo ""
+	@echo "🔥 Hot Reload Development:"
+	@echo "  make bootcamp-dev           - Start hot reload development environment"
+	@echo "  make bootcamp-logs          - View live Reth logs"
+	@echo "  make bootcamp-test          - Test Reth RPC"
+	@echo "  make bootcamp-stop          - Stop development environment"
+	@echo ""
+	@echo "Quick Start Options:"
+	@echo "  make bootcamp-reth-only     - Start just Reth (hot reload enabled)"
+	@echo "  make bootcamp-rollup        - Full rollup stack (Celestia + Rollkit + Reth)"
+	@echo "  make bootcamp-full          - Everything (Rollup + Explorer + Faucet + Spammer)"
+	@echo ""
+	@echo "Individual Services:"
+	@echo "  make bootcamp-with-explorer - Reth + Blockscout"
+	@echo "  make bootcamp-with-faucet   - Reth + Faucet"
+	@echo "  make bootcamp-custom        - Custom setup (see options below)"
+	@echo ""
+	@echo "Development:"
+	@echo "  make build                  - Build Reth (uses main Makefile)"
+	@echo "  make check                  - Quick syntax check (uses main Makefile)"
+	@echo "  make test                   - Run tests (uses main Makefile)"
+	@echo "  make clean                  - Clean build artifacts (uses main Makefile)"
+
+# Hot reload development (recommended for bootcamp)
+bootcamp-dev:
+	@echo "🔥 Starting Reth Hot Reload Development Environment..."
+	@echo ""
+	@echo "What you'll see:"
+	@echo "  1. Reth builds on your machine (faster caching)"
+	@echo "  2. Container starts and runs the binary"
+	@echo "  3. When you edit code → auto rebuild → auto restart"
+	@echo ""
+	@echo "⏱️  First build: 5-10 minutes"
+	@echo "⚡ Hot reloads: 30s-2min"
+	@echo ""
+	tilt up
+
+# Just Reth with hot reload (alias for bootcamp-dev)
+bootcamp-reth-only: bootcamp-dev
+
+# Full rollup stack  
+bootcamp-rollup:
+	@echo "🌟 Starting full rollup stack (Celestia + Rollkit + Reth)..."
+	@echo "This will take a few extra minutes for Celestia setup..."
+	tilt up --enable-celestia --enable-rollkit
+
+# Everything enabled
+bootcamp-full:
+	@echo "🎯 Starting complete bootcamp environment..."
+	@echo "This includes: Reth + Celestia + Rollkit + Blockscout + Faucet + Spammer"
+	tilt up --enable-celestia --enable-rollkit --enable-blockscout --enable-faucet --enable-spammer
+
+# Reth + Explorer
+bootcamp-with-explorer:
+	@echo "🔍 Starting Reth with Blockscout explorer..."
+	tilt up --enable-blockscout
+
+# Reth + Faucet
+bootcamp-with-faucet:
+	@echo "💰 Starting Reth with faucet..."
+	tilt up --enable-faucet
+
+# Custom setup instructions
+bootcamp-custom:
+	@echo "🛠️  Custom Setup Options:"
+	@echo ""
+	@echo "Mix and match these flags with 'tilt up':"
+	@echo "  --enable-celestia    Add Celestia DA node"
+	@echo "  --enable-rollkit     Add Rollkit sequencer (requires Celestia)"
+	@echo "  --enable-blockscout  Add Blockscout explorer"
+	@echo "  --enable-faucet      Add faucet service"
+	@echo "  --enable-spammer     Add transaction spammer"
+	@echo ""
+	@echo "Examples:"
+	@echo "  tilt up --enable-celestia --enable-blockscout"
+	@echo "  tilt up --enable-faucet --enable-spammer"
+
+# Stop bootcamp environment
+bootcamp-stop:
+	@echo "🛑 Stopping Reth Bootcamp Environment..."
+	tilt down
+
+# View bootcamp logs
+bootcamp-logs:
+	@echo "📝 Viewing Reth logs..."
+	docker logs reth-node -f --tail=50
+
+# Show all available endpoints
+bootcamp-endpoints:
+	@echo "🔗 Available Endpoints:"
+	@echo ""
+	@echo "Core Services:"
+	@echo "  Reth RPC:        http://localhost:8545"
+	@echo "  Reth WebSocket:  ws://localhost:8546"
+	@echo "  Reth Engine API: http://localhost:8551"
+	@echo "  Tilt Dashboard:  http://localhost:10350"
+	@echo ""
+	@echo "Rollup Stack (if enabled):"
+	@echo "  Celestia RPC:    http://localhost:26658"
+	@echo "  Rollkit RPC:     http://localhost:26657"
+	@echo ""
+	@echo "Tools (if enabled):"
+	@echo "  Blockscout:      http://localhost:4000"
+	@echo "  Faucet:          http://localhost:3001"
+	@echo ""
+	@echo "💡 Use 'tilt up --enable-<service>' to enable additional services"
+
+# Enhanced status check for all services
+bootcamp-status:
+	@echo "📊 Checking service status..."
+	@echo ""
+	@echo "🔧 Reth Node:"
+	@curl -s http://localhost:8545 \
+		-X POST \
+		-H "Content-Type: application/json" \
+		-d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+		| jq . 2>/dev/null || echo "❌ Reth not responding"
+	@echo ""
+	@echo "🌟 Celestia (if running):"
+	@curl -s http://localhost:26658/header/1 2>/dev/null | jq .result.header.height 2>/dev/null \
+		&& echo "✅ Celestia responsive" || echo "⚪ Celestia not running or not ready"
+	@echo ""
+	@echo "🔄 Rollkit (if running):"
+	@curl -s http://localhost:26657/status 2>/dev/null | jq .result.sync_info.latest_block_height 2>/dev/null \
+		&& echo "✅ Rollkit responsive" || echo "⚪ Rollkit not running or not ready"
+	@echo ""
+	@echo "🔍 Blockscout (if running):"
+	@curl -s http://localhost:4000 2>/dev/null | grep -q "Blockscout" \
+		&& echo "✅ Blockscout responsive" || echo "⚪ Blockscout not running"
+	@echo ""
+	@echo "💰 Faucet (if running):"
+	@curl -s http://localhost:3001/health 2>/dev/null | grep -q "ok" \
+		&& echo "✅ Faucet responsive" || echo "⚪ Faucet not running"
+
+# Development tips
+bootcamp-tips:
+	@echo "💡 Development Tips:"
+	@echo ""
+	@echo "1. First build takes 5-10 minutes - grab coffee! ☕"
+	@echo "2. Incremental builds are much faster (30s-2min)"
+	@echo "3. Use 'make check' for fastest syntax validation"
+	@echo "4. Edit code in ./crates/ - it will auto-rebuild"
+	@echo "5. Reth RPC available at http://localhost:8545"
+	@echo "6. Tilt dashboard at http://localhost:10350"
+	@echo ""
+	@echo "🐛 Debugging:"
+	@echo "  - make bootcamp-logs     # View real-time logs"
+	@echo "  - make bootcamp-status   # Check if RPC is responding"
+	@echo "  - make clean            # When builds get weird"
+
+# Install bootcamp dependencies (one-time setup)
+bootcamp-install:
+	@echo "📦 Installing bootcamp dependencies..."
+	# Install Rust if not present
+	@which cargo > /dev/null || curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+	# Install Tilt if not present  
+	@which tilt > /dev/null || echo "Please install Tilt: https://docs.tilt.dev/install.html"
+	# Install Docker if not present
+	@which docker > /dev/null || echo "Please install Docker: https://docs.docker.com/get-docker/"
+	@echo "✅ Bootcamp dependencies check complete!"

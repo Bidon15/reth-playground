@@ -1,0 +1,37 @@
+services:
+  # Init container to fix permissions
+  jwt-init:
+    image: alpine:latest
+    container_name: jwt-init
+    volumes:
+      - jwt-tokens:/shared/jwt
+    command: ["sh", "-c", "mkdir -p /shared/jwt && chmod 777 /shared/jwt && echo 'JWT directory ready'"]
+    networks:
+      - rollup-network
+
+  celestia-node:
+    image: ghcr.io/celestiaorg/celestia-node:v0.23.1-mocha
+    container_name: celestia
+    ports:
+      - "26658:26658"  # RPC
+    volumes:
+      - celestia-data:/home/celestia
+      - jwt-tokens:/shared/jwt
+      - ./celestia-start.sh:/start.sh:ro
+      - ./celestia-fund.sh:/fund.sh:ro
+    environment:
+      - CELESTIA_NETWORK=mocha
+    command: ["sh", "/start.sh"]
+    depends_on:
+      - jwt-init
+    networks:
+      - rollup-network
+    restart: unless-stopped
+
+volumes:
+  celestia-data:
+  jwt-tokens:
+
+networks:
+  rollup-network:
+    external: true

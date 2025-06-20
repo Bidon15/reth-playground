@@ -504,3 +504,39 @@ check-features:
 		--package reth-primitives-traits \
 		--package reth-primitives \
 		--feature-powerset
+
+##@ Bootcamp Development Environment
+
+# Include bootcamp-specific targets
+-include Makefile.bootcamp
+
+# Convenience alias for students (optional)
+bootcamp: bootcamp-help
+	@echo ""
+	@echo "Use 'make bootcamp-start' to begin!"
+
+##@ Bootcamp Quick Commands (Aliases)
+
+# Quick aliases for common bootcamp commands
+bc-start: bootcamp-start
+bc-stop: bootcamp-stop  
+bc-logs: bootcamp-logs
+bc-status: bootcamp-status
+bc-help: bootcamp-help
+
+# Override the main help to include bootcamp info
+help: original-help bootcamp-section
+
+# Rename the original help target
+original-help:
+	# Your existing help content here
+
+# Add bootcamp section to help
+bootcamp-section:
+	@echo ""
+	@echo "##@ Bootcamp Commands"
+	@echo "  bootcamp-help    Show bootcamp-specific commands"
+	@echo "  bootcamp-start   Start development environment (Tilt)"
+	@echo "  bc-start         Alias for bootcamp-start"
+	@echo ""
+	@echo "💡 New to the bootcamp? Run: make bootcamp-help"

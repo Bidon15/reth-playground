@@ -90,7 +90,7 @@ EVM_BLOCK_TIME=1s
 EVM_SIGNER_PASSPHRASE=secret
 DA_ADDRESS=http://celestia-node:26658
 DA_AUTH_TOKEN=$celestia_jwt
-DA_NAMESPACE=0000000000000000000000000000000000000000000000000000deadbeef
+DA_NAMESPACE=00000000000000000000000000000000000000000000000000deadbeef
 EOF
 
 echo ""
@@ -101,7 +101,7 @@ echo "✅ Celestia Ready: http://celestia-node:26658"
 echo "✅ Genesis Hash: $genesis_hash"
 echo "✅ Reth JWT Secret: ${jwt_secret:0:20}..."
 echo "✅ Celestia JWT Token: ${celestia_jwt:0:20}..."
-echo "✅ DA Namespace: 0000000000000000000000000000000000000000000000000000deadbeef"
+echo "✅ DA Namespace: 00000000000000000000000000000000000000000000000000deadbeef"
 echo "✅ Rollkit Config: /shared/rollkit.env"
 echo ""
 echo "🔄 Ready to start Rollkit sequencer!"

@@ -86,6 +86,7 @@ members = [
     "crates/ress/protocol",
     "crates/ress/provider",
     "crates/revm/",
+    "crates/rkb/",
     "crates/rpc/ipc/",
     "crates/rpc/rpc-api/",
     "crates/rpc/rpc-builder/",
@@ -404,6 +405,7 @@ reth-provider = { path = "crates/storage/provider" }
 reth-prune = { path = "crates/prune/prune" }
 reth-prune-types = { path = "crates/prune/types", default-features = false }
 reth-revm = { path = "crates/revm", default-features = false }
+reth-rkb = { path = "crates/rkb" }
 reth-rpc = { path = "crates/rpc/rpc" }
 reth-rpc-api = { path = "crates/rpc/rpc-api" }
 reth-rpc-api-testing-util = { path = "crates/rpc/rpc-testing-util" }

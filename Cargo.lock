@@ -9794,6 +9794,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "reth-rkb"
+version = "1.10.2"
+dependencies = [
+ "alloy-evm",
+ "alloy-primitives",
+ "alloy-sol-types",
+ "revm",
+ "tracing",
+]
+
+[[package]]
 name = "reth-rpc"
 version = "1.10.2"
 dependencies = [

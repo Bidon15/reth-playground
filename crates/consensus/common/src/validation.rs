@@ -319,13 +319,17 @@ pub fn validate_against_parent_eip1559_base_fee<ChainSpec: EthChainSpec + Ethere
     Ok(())
 }
 
-/// Validates that the block timestamp is greater than the parent block timestamp.
+/// Validates that the block timestamp is greater than or equal to the parent block timestamp.
+///
+/// NOTE: Modified for L2/rollup mode to allow subsecond blocks (multiple blocks per second).
+/// Ethereum mainnet requires strictly increasing timestamps (`>`), but L2s with fast block
+/// times need to allow equal timestamps (`>=`).
 #[inline]
 pub fn validate_against_parent_timestamp<H: BlockHeader>(
     header: &H,
     parent: &H,
 ) -> Result<(), ConsensusError> {
-    if header.timestamp() <= parent.timestamp() {
+    if header.timestamp() < parent.timestamp() {
         return Err(ConsensusError::TimestampIsInPast {
             parent_timestamp: parent.timestamp(),
             timestamp: header.timestamp(),

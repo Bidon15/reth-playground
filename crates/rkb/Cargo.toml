@@ -19,6 +19,17 @@ alloy-sol-types.workspace = true
 # Revm
 revm.workspace = true
 
+# Reth
+reth-chainspec.workspace = true
+reth-ethereum = { workspace = true, features = ["evm"] }
+reth-ethereum-primitives.workspace = true
+reth-evm.workspace = true
+reth-node-api.workspace = true
+reth-node-builder.workspace = true
+
+# Async
+eyre.workspace = true
+
 # Tracing
 tracing.workspace = true
 

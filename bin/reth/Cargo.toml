@@ -28,6 +28,7 @@ workspace = true
 
 [dependencies]
 # reth
+reth-rkb.workspace = true
 reth-ethereum-cli.workspace = true
 reth-chainspec.workspace = true
 reth-primitives.workspace = true
@@ -63,6 +64,7 @@ reth-ress-protocol.workspace = true
 reth-ress-provider.workspace = true
 
 # alloy
+alloy-primitives.workspace = true
 alloy-rpc-types = { workspace = true, features = ["engine"] }
 
 # tracing

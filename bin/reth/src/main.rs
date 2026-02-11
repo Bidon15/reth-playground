@@ -11,7 +11,9 @@ use clap::Parser;
 use reth::{args::RessArgs, cli::Cli, ress::install_ress_subprotocol};
 use reth_ethereum_cli::chainspec::EthereumChainSpecParser;
 use reth_node_builder::NodeHandle;
-use reth_node_ethereum::EthereumNode;
+use reth_node_ethereum::{EthereumAddOns, EthereumNode};
+use alloy_primitives::Address;
+use reth_rkb::RkbExecutorBuilder;
 use tracing::info;
 
 fn main() {
@@ -24,9 +26,23 @@ fn main() {
 
     if let Err(err) =
         Cli::<EthereumChainSpecParser, RessArgs>::parse().run(async move |builder, ress_args| {
-            info!(target: "reth::cli", "Launching node");
-            let NodeHandle { node, node_exit_future } =
-                builder.node(EthereumNode::default()).launch_with_debug_capabilities().await?;
+            // Get authorized bridge address from environment variable
+            // Falls back to Address::ZERO if not set (for testing/development)
+            let authorized_bridge: Address = std::env::var("RKB_AUTHORIZED_BRIDGE")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(Address::ZERO);
+
+            info!(target: "reth::cli", %authorized_bridge, "Launching RKB node with NativeMinter precompile");
+
+            let NodeHandle { node, node_exit_future } = builder
+                .with_types::<EthereumNode>()
+                .with_components(
+                    EthereumNode::components().executor(RkbExecutorBuilder::new(authorized_bridge)),
+                )
+                .with_add_ons(EthereumAddOns::default())
+                .launch_with_debug_capabilities()
+                .await?;
 
             // Install ress subprotocol.
             if ress_args.enabled {
